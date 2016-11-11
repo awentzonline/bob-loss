@@ -10,6 +10,9 @@ setup(
     author_email='adam@adamwentz.com',
     url='https://github.com/awentzonline/bob-loss',
     packages=[
-        'bobloss'
+        'bobloss',
+    ],
+    install_requires=[
+        'youtube-dl',
     ]
 )
