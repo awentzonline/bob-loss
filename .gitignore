@@ -1,5 +1,6 @@
 scripts/video/*
 scripts/frames/*
+scripts/*.npz
 
 .DS_Store
 
