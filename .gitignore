@@ -1,4 +1,6 @@
-scripts/season*/
+scripts/video/*
+scripts/frames/*
+
 .DS_Store
 
 # Byte-compiled / optimized / DLL files

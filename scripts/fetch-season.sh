@@ -10,5 +10,8 @@ season_urls=(
 )
 URL=${season_urls[$1]}
 
-echo "Downloading season $1 $URL"
-youtube-dl --yes-playlist -f worstvideo -o "./season$1/%(playlist_index)s.%(ext)s" $URL
+
+echo "Downloading season $1"
+youtube-dl --yes-playlist -f worstvideo \
+  -o "./video/season-$1/%(playlist_index)s.%(ext)s" \
+  $URL
