@@ -14,5 +14,8 @@ setup(
     ],
     install_requires=[
         'youtube-dl',
+        'Pillow',
+        'numpy',
+        'tqdm',
     ]
 )

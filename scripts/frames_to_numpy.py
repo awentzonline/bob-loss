@@ -52,7 +52,6 @@ def episodes_to_numpy(
             frame_ids.append(frame_id)
             episode_ids.append(episode_id)
             last_shape = img_data.shape
-            #print img_data.shape
     print('Numpyize...')
     frame_data = np.array(frame_data)
     frame_ids = np.array(frame_ids)
@@ -60,7 +59,9 @@ def episodes_to_numpy(
     print('shapes:')
     for d in (frame_data, frame_ids, episode_ids):
         print d.shape
-    return frame_data, frame_ids, episode_ids
+    return dict(
+        frame_data=frame_data, frame_ids=frame_ids, episode_ids=episode_ids
+    )
 
 
 if __name__ == '__main__':
@@ -92,4 +93,4 @@ if __name__ == '__main__':
     print('Converting episodes to numpy...')
     episodes_data = episodes_to_numpy(**args)
     print('Saving...')
-    np.savez(args['output'], *episodes_data)
+    np.savez(args['output'], **episodes_data)
