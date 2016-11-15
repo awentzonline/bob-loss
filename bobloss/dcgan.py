@@ -147,9 +147,9 @@ class DCGAN(object):
             x = (i % num_wide) * img_width
             y = (i / num_wide) * img_height
             #sample_arr = samples[i]
-            sample_arr = (samples[i] + 1.) * 128.
+            #sample_arr = (samples[i] + 1.) * 128.
+            sample_arr = samples[i] * 256.
             #print sample_arr.min(), sample_arr.mean(), sample_arr.max()
-            # sample_arr = samples[i] * 256.
             sample_img = array_to_img(sample_arr)
             output_img.paste(sample_img, (x, y))
         if filename is None:

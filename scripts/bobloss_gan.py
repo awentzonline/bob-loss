@@ -19,15 +19,16 @@ class BobLossGAN(DCGANSR):
         )
         for name in ('frame_data', 'frame_ids', 'episode_ids'):
             setattr(self, name, data[name])
-        self.frame_data = (self.frame_data / 128.) - 1.
+        #self.frame_data = (self.frame_data / 128.) - 1.
+        self.frame_data = self.frame_data / 256.
 
     def _build_models(self):
         # generator
-        activation = 'tanh'
+        activation = 'relu'
         kernel_size = 5
         max_channels = 1024
         cnn_layers = ((max_channels // 2, 3, 3), (max_channels // 4, 3, 3), (max_channels // 8, 3, 3))
-        cnn_layers = ((max_channels // 4, 3, 3), (max_channels // 8, 3, 3))
+        cnn_layers = ((max_channels // 2, 3, 3), (max_channels // 4, 3, 3))
         num_cnn_layers = len(cnn_layers)
         scale = 2 ** num_cnn_layers
         img_height, img_width, img_channels = self.frame_shape
@@ -46,7 +47,7 @@ class BobLossGAN(DCGANSR):
             x = Convolution2D(channels, 1, 1, border_mode='same')(x)
             x = batchnorm_tf(x)
             x = Activation(activation)(x)
-        x = Convolution2D(img_channels, 1, 1, activation='tanh')(x)
+        x = Convolution2D(img_channels, 1, 1, activation='sigmoid')(x)
         generator = Model(generator_input, x)
         generator_optimizer = Adam(lr=1e-4)
         generator.compile(
@@ -58,7 +59,7 @@ class BobLossGAN(DCGANSR):
         # discriminator
         max_channels = 1024
         #cnn_layers = ((max_channels // 8, 3, 3), (max_channels // 4, 3, 3), (max_channels // 2, 3, 3))
-        cnn_layers = ((max_channels // 4, 3, 3), (max_channels // 8, 3, 3))
+        cnn_layers = ((max_channels // 4, 3, 3), (max_channels // 2, 3, 3))
         num_cnn_layers = len(cnn_layers)
         print self.frame_shape
         x = discriminator_input = Input(shape=self.frame_shape)
@@ -119,7 +120,7 @@ class BobLossGAN(DCGANSR):
 
 
 def batchnorm_tf(x):
-    return x
+    # work-around apparent theano/tf-dim_ordering bug
     x = Permute((2, 3, 1))(x)
     x = BatchNormalization(mode=2, axis=1)(x)
     x = Permute((3, 1, 2))(x)

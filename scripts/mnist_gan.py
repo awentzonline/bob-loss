@@ -15,12 +15,13 @@ class MNISTGAN(DCGANSR):
     def _load_dataset(self):
         (X_train, y_train), (X_test, y_test) = mnist.load_data()
         X_train =  np.transpose(X_train[:, None], (0, 2, 3, 1)).astype('float32')
-        X_train = (X_train / 128.) - 1.
+        #X_train = (X_train / 128.) - 1.
+        X_train = X_train / 256.
         self.frame_data = X_train
 
     def _build_models(self):
         # generator
-        activation = 'tanh'
+        activation = 'relu'
         kernel_size = 5
         max_channels = 256
         cnn_layers = ((max_channels // 2, 3, 3), (max_channels // 4, 3, 3))
@@ -39,10 +40,10 @@ class MNISTGAN(DCGANSR):
             x = Convolution2D(channels, kernel_size, kernel_size, border_mode='same')(x)
             x = batchnorm_tf(x)
             x = Activation(activation)(x)
-            x = Convolution2D(channels, 1, 1, border_mode='same')(x)
-            x = batchnorm_tf(x)
-            x = Activation(activation)(x)
-        x = Convolution2D(img_channels, 1, 1, activation='tanh', border_mode='same')(x)
+            # x = Convolution2D(channels, 1, 1, border_mode='same')(x)
+            # x = batchnorm_tf(x)
+            # x = Activation(activation)(x)
+        x = Convolution2D(img_channels, 1, 1, activation='sigmoid', border_mode='same')(x)
         generator = Model(generator_input, x)
         generator_optimizer = Adam(lr=1e-4)
         generator.compile(
@@ -66,12 +67,12 @@ class MNISTGAN(DCGANSR):
                 x = Activation('tanh')(x)
             else:
                 x = LeakyReLU(0.2)(x)
-            x = Convolution2D(channels, 1, 1, border_mode='same')(x)
-            x = batchnorm_tf(x)
-            if activation == 'tanh':
-                x = Activation('tanh')(x)
-            else:
-                x = LeakyReLU(0.2)(x)
+            # x = Convolution2D(channels, 1, 1, border_mode='same')(x)
+            # x = batchnorm_tf(x)
+            # if activation == 'tanh':
+            #     x = Activation('tanh')(x)
+            # else:
+            #     x = LeakyReLU(0.2)(x)
             x = Dropout(self.config.dropout)(x)
         x = Flatten()(x)
         x = Dense(max_channels)(x)
@@ -114,7 +115,7 @@ class MNISTGAN(DCGANSR):
 
 
 def batchnorm_tf(x):
-    return x
+    # work-around apparent theano/tf-dim_ordering bug
     x = Permute((2, 3, 1))(x)
     x = BatchNormalization(mode=2, axis=1)(x)
     x = Permute((3, 1, 2))(x)

@@ -34,6 +34,17 @@ class SampleMemory(object):
         self.tail_index = batch_tail_index % self.max_size
         self.num_stored = min(self.num_stored + batch_size, self.max_size)
 
+    def last_n_frames(self, n):
+        return self.memory[self.last_n_frames_indexes(n)]
+
+    def last_n_frames_indexes(self, n):
+        tail = self.tail_index
+        start = tail - n
+        indexes = range(max(start, 0), tail)
+        if start < 0:
+            indexes = range(self.num_stored + start, self.num_stored) + indexes
+        return indexes
+
 
 if __name__ == '__main__':
     shape = (32, 32, 3)
@@ -66,4 +77,4 @@ if __name__ == '__main__':
     assert(mem.num_stored == max_size)
     assert(mem.tail_index == 10)
     assert(np.array_equal(mem.memory[:5], batch[-10:-5]))
-    
+    assert(mem.last_n_frames_indexes(15) == map(lambda x: x % 100, range(95, 110)))

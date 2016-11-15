@@ -48,11 +48,12 @@ class DCGANSR(DCGAN):
         def gen_batches():
             while True:
                 num_samples = batch_size // 2
+                num_recent = int(num_samples * 0.5)
                 real_images = self.sample_frames(num_samples)
-                #generated_images = self.generate_images(num_samples)
                 self.build_memory(num_samples)  # add some more to the memory
-                generated_images = self.sample_frames_from_memory(num_samples)
-                X = np.concatenate([generated_images, real_images])
+                generated_images = self.sample_frames_from_memory(num_samples - num_recent)
+                recent_images = self.last_n_frames_from_memory(num_recent)
+                X = np.concatenate([generated_images, recent_images, real_images])
                 Y = np.zeros((2 * num_samples, 2))
                 Y[:num_samples, 0] = 1.
                 Y[num_samples:, 1] = 1.
@@ -70,6 +71,9 @@ class DCGANSR(DCGAN):
         if sample_deficit > 0:
             self.build_memory(sample_deficit)
         return self.memory.sample(num_samples)
+
+    def last_n_frames_from_memory(self, n):
+        return self.memory.last_n_frames(n)
 
     def build_memory(self, num_samples):
         samples = self.generate_images(num_samples)
