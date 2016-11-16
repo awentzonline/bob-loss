@@ -12,7 +12,7 @@ from keras.models import Model
 from keras.optimizers import Adam
 
 
-class Model(DCGANSR):
+class GANModel(DCGANSR):
     def _load_dataset(self):
         (X_train, y_train), (X_test, y_test) = mnist.load_data()
         X_train = X_train[:, None].astype('float32')
@@ -128,10 +128,10 @@ if __name__ == '__main__':
     import argparse
 
     arg_parser = argparse.ArgumentParser(description='Bob Loss GAN model')
-    Model.add_to_arg_parser(arg_parser)
+    GANModel.add_to_arg_parser(arg_parser)
     args = arg_parser.parse_args()
 
-    model = Model(args)
+    model = GANModel(args)
     model.load_dataset()
     model.build_models()
     if args.num_pretrain_batches:
