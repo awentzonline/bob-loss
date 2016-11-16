@@ -1,10 +1,13 @@
+import os
+
 import numpy as np
 from PIL import Image
 from keras.layers import (
     Activation, BatchNormalization, Convolution2D, Deconvolution2D, Dense,
     Dropout, Flatten, Input, LeakyReLU, Permute, Reshape, UpSampling2D
 )
-from keras.models import Model
+from keras import backend as K
+from keras.models import load_model, Model
 from keras.optimizers import Adam
 from keras.preprocessing.image import array_to_img
 from tqdm import tqdm
@@ -39,7 +42,8 @@ class DCGAN(object):
         return self.frame_data.shape[0]
 
     def build_models(self):
-        self.generator, self.discriminator, self.gan = self._build_models()
+        if not self.try_load_models():
+            self.generator, self.discriminator, self.gan = self._build_models()
 
     def _build_models(self):
         raise NotImplementedError('Implement `_build_models`')
@@ -83,6 +87,8 @@ class DCGAN(object):
                     g_loss = history.history['loss'][-1]
                     tries += 1
                 g_losses.append(g_loss)
+            if epoch % self.config.model_save_rate == 0:
+                self.save_models()
         self.save_sample_grid(self.generate_images(batch_size))
         return d_losses, g_losses
 
@@ -93,6 +99,8 @@ class DCGAN(object):
                 real_images = self.sample_frames(num_samples)
                 generated_images = self.generate_images(num_samples)
                 X = np.concatenate([generated_images, real_images])
+                if np.random.random() < self.config.p_sample_batch:
+                    self.save_sample_grid(X, filename=self.config.sample_batch_name)
                 Y = np.zeros((2 * num_samples, 2))
                 Y[:num_samples, 0] = 1.
                 Y[num_samples:, 1] = 1.
@@ -136,7 +144,10 @@ class DCGAN(object):
         return self.frame_data[indexes]
 
     def save_sample_grid(self, samples, filename=None):
-        num_samples, img_height, img_width, img_channels = samples.shape
+        if K.image_dim_ordering == 'tf':
+            num_samples, img_height, img_width, img_channels = samples.shape
+        else:
+            num_samples, img_channels, img_height, img_width = samples.shape
         num_wide = int(np.sqrt(num_samples))
         num_heigh = int(np.ceil(num_samples / num_wide))
         width = num_wide * img_width
@@ -147,19 +158,33 @@ class DCGAN(object):
             x = (i % num_wide) * img_width
             y = (i / num_wide) * img_height
             #sample_arr = samples[i]
-            #sample_arr = (samples[i] + 1.) * 128.
-            sample_arr = samples[i] * 256.
-            #print sample_arr.min(), sample_arr.mean(), sample_arr.max()
+            sample_arr = (samples[i] + 1.) * 128.
+            #sample_arr = samples[i] * 256.
             sample_img = array_to_img(sample_arr)
             output_img.paste(sample_img, (x, y))
         if filename is None:
             filename = self.config.sample_output_filename
         output_img.save(filename)
 
-    def save_model(self, model_name=None):
+    def try_load_models(self, model_name=None):
         model_name = model_name or self.config.model_name
-        g_model_name = '{}_g.h5'.format(model_name)
-        d_model_name = '{}_d.h5'.format(model_name)
+        if os.path.exists('{}_g.h5'.format(model_name)):
+            if not self.config.ignore_existing_model:
+                self.load_models(model_name=model_name)
+                return True
+        return False
+
+    def save_models(self, model_name=None):
+        model_name = model_name or self.config.model_name
+        self.generator.save('{}_g.h5'.format(model_name))
+        self.discriminator.save('{}_d.h5'.format(model_name))
+        self.gan.save('{}_gan.h5'.format(model_name))  # KISS
+
+    def load_models(self, model_name):
+        model_name = model_name or self.config.model_name
+        self.generator = load_model('{}_g.h5'.format(model_name))
+        self.discriminator = load_model('{}_d.h5'.format(model_name))
+        self.gan = load_model('{}_gan.h5'.format(model_name))
 
     @classmethod
     def load_model(cls, model_name):
@@ -217,4 +242,24 @@ class DCGAN(object):
         arg_parser.add_argument(
             '--model-name', default='bobloss_mdl',
             help='Filename prefix for serialized model data'
+        )
+        arg_parser.add_argument(
+            '--p-sample-batch', default=0.1, type=float,
+            help='Probability of saving an image of the current training batch'
+        )
+        arg_parser.add_argument(
+            '--sample-batch-name', default='batch.png',
+            help='Filename for batch image output'
+        )
+        arg_parser.add_argument(
+            '--model', default='bobloss',
+            help='Prefix of filename for model'
+        )
+        arg_parser.add_argument(
+            '--ignore-existing-model', default=False, action='store_true',
+            help='Ignore existing model files'
+        )
+        arg_parser.add_argument(
+            '--model-save-rate', default=20, type=int,
+            help='Save the model every n iterations'
         )

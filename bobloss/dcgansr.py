@@ -54,6 +54,8 @@ class DCGANSR(DCGAN):
                 generated_images = self.sample_frames_from_memory(num_samples - num_recent)
                 recent_images = self.last_n_frames_from_memory(num_recent)
                 X = np.concatenate([generated_images, recent_images, real_images])
+                if np.random.random() < self.config.p_sample_batch:
+                    self.save_sample_grid(X, filename=self.config.sample_batch_name)
                 Y = np.zeros((2 * num_samples, 2))
                 Y[:num_samples, 0] = 1.
                 Y[num_samples:, 1] = 1.
