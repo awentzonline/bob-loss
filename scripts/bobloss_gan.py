@@ -20,7 +20,7 @@ class GANModel(DCGANSR):
         for name in ('frame_data', 'frame_ids', 'episode_ids'):
             setattr(self, name, data[name])
         if K.image_dim_ordering() == 'th':
-            self.frame_data = np.transpose(self.frame_data, (0, 2, 3, 1))
+            self.frame_data = np.transpose(self.frame_data, (0, 3, 1, 2))
         self.frame_data = (self.frame_data / 128.) - 1.
 
     def _build_models(self):
