@@ -14,20 +14,12 @@ from keras.optimizers import Adam
 
 class GANModel(DCGANSR):
     def _load_dataset(self):
-        (X_train, y_train), (X_test, y_test) = mnist.load_data()
-        X_train = X_train[:, None].astype('float32')
-        if K.image_dim_ordering() == 'tf':
-            X_train =  np.transpose(X_train, (0, 2, 3, 1))
-        X_train = X_train / 128. - 1.
-        self.frame_data = X_train
-
-    def _load_dataset(self):
         data = np.load(
             self.config.dataset
         )
         for name in ('frame_data', 'frame_ids', 'episode_ids'):
             setattr(self, name, data[name])
-        if K.image_dim_ordering == 'th':
+        if K.image_dim_ordering() == 'th':
             self.frame_data = np.transpose(self.frame_data, (0, 3, 2, 1))
         self.frame_data = (self.frame_data / 128.) - 1.
 
@@ -49,7 +41,7 @@ class GANModel(DCGANSR):
         )(generator_input)
         x = BatchNormalization(mode=2)(x)
         x = Activation(activation)(x)
-        if K.image_dim_ordering == 'tf':
+        if K.image_dim_ordering() == 'tf':
             reshape_order = (img_height // scale, img_width // scale, max_channels)
         else:
             reshape_order = (max_channels, img_height // scale, img_width // scale)
@@ -88,7 +80,7 @@ class GANModel(DCGANSR):
         x = Dropout(self.config.dropout)(x)
         x = Dense(2, activation='softmax')(x)
         discriminator = Model(discriminator_input, x)
-        discriminator_optimizer = Adam(lr=1e-3)
+        discriminator_optimizer = Adam(lr=1e-4)
         discriminator.compile(
             loss='binary_crossentropy',
             optimizer=discriminator_optimizer
