@@ -144,7 +144,7 @@ class DCGAN(object):
         return self.frame_data[indexes]
 
     def save_sample_grid(self, samples, filename=None):
-        if K.image_dim_ordering == 'tf':
+        if K.image_dim_ordering() == 'tf':
             num_samples, img_height, img_width, img_channels = samples.shape
         else:
             num_samples, img_channels, img_height, img_width = samples.shape

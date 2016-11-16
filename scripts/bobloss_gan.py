@@ -16,7 +16,7 @@ class GANModel(DCGANSR):
     def _load_dataset(self):
         (X_train, y_train), (X_test, y_test) = mnist.load_data()
         X_train = X_train[:, None].astype('float32')
-        if K.image_dim_ordering == 'tf':
+        if K.image_dim_ordering() == 'tf':
             X_train =  np.transpose(X_train, (0, 2, 3, 1))
         X_train = X_train / 128. - 1.
         self.frame_data = X_train
@@ -28,7 +28,7 @@ class GANModel(DCGANSR):
         for name in ('frame_data', 'frame_ids', 'episode_ids'):
             setattr(self, name, data[name])
         if K.image_dim_ordering == 'th':
-            self.frame_data = np.transpose(self.frame_data, (0, 3, 1, 2))
+            self.frame_data = np.transpose(self.frame_data, (0, 3, 2, 1))
         self.frame_data = (self.frame_data / 128.) - 1.
 
     def _build_models(self):
@@ -39,7 +39,7 @@ class GANModel(DCGANSR):
         cnn_layers = ((max_channels // 2, 3, 3), (max_channels // 4, 3, 3), (max_channels // 8, 3, 3))
         num_cnn_layers = len(cnn_layers)
         scale = 2 ** num_cnn_layers
-        if K.image_dim_ordering == 'tf':
+        if K.image_dim_ordering() == 'tf':
             img_height, img_width, img_channels = self.frame_shape
         else:
             img_channels, img_height, img_width = self.frame_shape

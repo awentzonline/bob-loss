@@ -16,7 +16,7 @@ class MNISTGAN(DCGANSR):
     def _load_dataset(self):
         (X_train, y_train), (X_test, y_test) = mnist.load_data()
         X_train = X_train[:, None].astype('float32')
-        if K.image_dim_ordering == 'tf':
+        if K.image_dim_ordering() == 'th':
             X_train =  np.transpose(X_train, (0, 2, 3, 1))
         X_train = X_train / 128. - 1.
         self.frame_data = X_train
@@ -29,7 +29,7 @@ class MNISTGAN(DCGANSR):
         cnn_layers = ((max_channels // 2, 3, 3), (max_channels // 4, 3, 3))
         num_cnn_layers = len(cnn_layers)
         scale = 2 ** num_cnn_layers
-        if K.image_dim_ordering == 'tf':
+        if K.image_dim_ordering() == 'tf':
             img_height, img_width, img_channels = self.frame_shape
         else:
             img_channels, img_height, img_width = self.frame_shape
@@ -39,7 +39,7 @@ class MNISTGAN(DCGANSR):
         )(generator_input)
         x = BatchNormalization(mode=2)(x)
         x = Activation(activation)(x)
-        if K.image_dim_ordering == 'tf':
+        if K.image_dim_ordering() == 'tf':
             reshape_order = (img_height // scale, img_width // scale, max_channels)
         else:
             reshape_order = (max_channels, img_height // scale, img_width // scale)
