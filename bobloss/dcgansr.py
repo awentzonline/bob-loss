@@ -44,29 +44,23 @@ class DCGANSR(DCGAN):
     def _build_models(self):
         raise NotImplementedError('Implement `_build_models`')
 
-    def train_discriminator(self, batch_size, num_batches=1, verbose=False):
-        def gen_batches():
-            while True:
-                num_samples = batch_size // 2
-                num_recent = int(num_samples * 0.5)
-                real_images = self.sample_frames(num_samples)
-                self.build_memory(num_samples)  # add some more to the memory
-                generated_images = self.sample_frames_from_memory(num_samples - num_recent)
-                recent_images = self.last_n_frames_from_memory(num_recent)
-                X = np.concatenate([generated_images, recent_images, real_images])
-                if np.random.random() < self.config.p_sample_batch:
-                    self.save_sample_grid(X, filename=self.config.sample_batch_name)
-                Y = np.zeros((2 * num_samples, 2))
-                Y[:num_samples, 0] = 1.
-                Y[num_samples:, 1] = 1.
-                # Y = np.zeros((2 * num_samples, 1))
-                # Y[:num_samples] = self.config.negative_label
-                # Y[num_samples:] = self.config.positive_label
-                yield X, Y
-        return self.discriminator.fit_generator(
-            gen_batches(), samples_per_epoch=batch_size * num_batches,
-            nb_epoch=1, verbose=verbose
-        )
+    def make_discriminator_batch(self, batch_size):
+        num_samples = batch_size // 2
+        num_recent = int(num_samples * 0.5)
+        real_images = self.sample_frames(num_samples)
+        self.build_memory(num_samples)  # add some more to the memory
+        generated_images = self.sample_frames_from_memory(num_samples - num_recent)
+        recent_images = self.last_n_frames_from_memory(num_recent)
+        X = np.concatenate([generated_images, recent_images, real_images])
+        if np.random.random() < self.config.p_sample_batch:
+            self.save_sample_grid(X, filename=self.config.sample_batch_name)
+        Y = np.zeros((2 * num_samples, 2))
+        Y[:num_samples, 0] = 1.
+        Y[num_samples:, 1] = 1.
+        # Y = np.zeros((2 * num_samples, 1))
+        # Y[:num_samples] = self.config.negative_label
+        # Y[num_samples:] = self.config.positive_label
+        return X, Y
 
     def sample_frames_from_memory(self, num_samples):
         sample_deficit = num_samples - self.memory.num_stored

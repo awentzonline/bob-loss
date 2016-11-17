@@ -60,12 +60,14 @@ class DCGAN(object):
         g_losses = []
         # discriminator_data = gan_training.gen_discriminator_training_data(batch_size)
         # generator_data = gan_training.gen_generator_training_data(batch_size)
+        throttle_discriminator = False
+        throttle_generator = False
         for epoch in tqdm(range(num_epochs)):
             if epoch % self.config.generate_every_n_iters == 0:
                 if train_generator:
                     self.save_sample_grid(self.generate_images(batch_size))
                     #self.save_sample_grid(self.sample_frames(batch_size), filename='real_images.png')
-            if train_discriminator:
+            if train_discriminator and not throttle_discriminator:
                 d_loss = 9999.
                 tries = 0
                 while d_loss > 0.9 and tries < 5:
@@ -75,9 +77,9 @@ class DCGAN(object):
                         verbose=True
                     )
                     d_loss = history.history['loss'][-1]
-                    tries += 1
+                tries += 1
                 d_losses.append(d_loss)
-            if train_generator:
+            if train_generator and not throttle_generator:
                 g_loss = 9999.
                 tries = 0
                 while g_loss > 0.9 and tries < 5:
@@ -89,25 +91,18 @@ class DCGAN(object):
                 g_losses.append(g_loss)
             if epoch % self.config.model_save_rate == 0:
                 self.save_models()
+            accuracy = self.check_accuracy()
+            throttle_discriminator = accuracy > self.config.throttle_accuracy_p
+            throttle_generator = accuracy < self.config.throttle_accuracy_p
+            if throttle_discriminator and throttle_generator:
+                throttle_generator = throttle_discriminator = False
         self.save_sample_grid(self.generate_images(batch_size))
         return d_losses, g_losses
 
     def train_discriminator(self, batch_size, num_batches=1, verbose=False):
         def gen_batches():
             while True:
-                num_samples = batch_size // 2
-                real_images = self.sample_frames(num_samples)
-                generated_images = self.generate_images(num_samples)
-                X = np.concatenate([generated_images, real_images])
-                if np.random.random() < self.config.p_sample_batch:
-                    self.save_sample_grid(X, filename=self.config.sample_batch_name)
-                Y = np.zeros((2 * num_samples, 2))
-                Y[:num_samples, 0] = 1.
-                Y[num_samples:, 1] = 1.
-                # Y = np.zeros((2 * num_samples, 1))
-                # Y[:num_samples] = self.config.negative_label
-                # Y[num_samples:] = self.config.positive_label
-                yield X, Y
+                yield self.make_discriminator_batch(batch_size)
         return self.discriminator.fit_generator(
             gen_batches(), samples_per_epoch=batch_size * num_batches,
             nb_epoch=1, verbose=verbose
@@ -128,9 +123,19 @@ class DCGAN(object):
             nb_epoch=1, verbose=verbose
         )
 
+    def check_accuracy(self):
+        X, Y = self.make_discriminator_batch(32)
+        Y_hat = self.discriminator.predict(X)
+        y = np.argmax(Y, axis=1)
+        y_hat = np.argmax(Y_hat, axis=1)
+        errors = y - y_hat
+        num_items = errors.shape[0]
+        num_right = (errors == 0).sum()
+        return num_right / float(num_items)
+
     def sample_noise(self, num_samples):
         return np.random.uniform(
-            -1., 1., size=(num_samples, self.config.generator_input_dim)
+            0., 1., size=(num_samples, self.config.generator_input_dim)
         )
 
     def generate_images(self, num_images):
@@ -142,6 +147,21 @@ class DCGAN(object):
             0, self.num_frames_in_dataset, (num_samples,)
         )
         return self.frame_data[indexes]
+
+    def make_discriminator_batch(self, batch_size):
+        num_samples = batch_size // 2
+        real_images = self.sample_frames(num_samples)
+        generated_images = self.generate_images(num_samples)
+        X = np.concatenate([generated_images, real_images])
+        if np.random.random() < self.config.p_sample_batch:
+            self.save_sample_grid(X, filename=self.config.sample_batch_name)
+        Y = np.zeros((2 * num_samples, 2))
+        Y[:num_samples, 0] = 1.
+        Y[num_samples:, 1] = 1.
+        # Y = np.zeros((2 * num_samples, 1))
+        # Y[:num_samples] = self.config.negative_label
+        # Y[num_samples:] = self.config.positive_label
+        return X, Y
 
     def save_sample_grid(self, samples, filename=None):
         if K.image_dim_ordering() == 'tf':
@@ -262,4 +282,8 @@ class DCGAN(object):
         arg_parser.add_argument(
             '--model-save-rate', default=20, type=int,
             help='Save the model every n iterations'
+        )
+        arg_parser.add_argument(
+            '--throttle-accuracy_p', default=0.3, type=float,
+            help='Skip training parts of the model at this level of accuracy'
         )

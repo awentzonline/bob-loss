@@ -108,10 +108,10 @@ class GANModel(DCGANSR):
 
 def batchnorm_tf(x):
     # work-around apparent theano/tf-dim_ordering bug
-    if K.image_dim_ordering == 'tf':
+    if K.image_dim_ordering() == 'tf':
         x = Permute((2, 3, 1))(x)
     x = BatchNormalization(mode=2, axis=1)(x)
-    if K.image_dim_ordering == 'tf':
+    if K.image_dim_ordering() == 'tf':
         x = Permute((3, 1, 2))(x)
     return x
 

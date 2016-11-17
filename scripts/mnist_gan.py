@@ -16,7 +16,7 @@ class MNISTGAN(DCGANSR):
     def _load_dataset(self):
         (X_train, y_train), (X_test, y_test) = mnist.load_data()
         X_train = X_train[:, None].astype('float32')
-        if K.image_dim_ordering() == 'th':
+        if K.image_dim_ordering() == 'tf':
             X_train =  np.transpose(X_train, (0, 2, 3, 1))
         X_train = X_train / 128. - 1.
         self.frame_data = X_train
@@ -67,7 +67,7 @@ class MNISTGAN(DCGANSR):
         x = discriminator_input = Input(shape=self.frame_shape)
         for channels, w, h in cnn_layers:
             x = Convolution2D(
-                channels, kernel_size, kernel_size, subsample=(2, 2)
+                channels, kernel_size, kernel_size, subsample=(2, 2), border_mode='same'
             )(x)
             x = batchnorm_tf(x)
             x = LeakyReLU(0.2)(x)
@@ -78,7 +78,7 @@ class MNISTGAN(DCGANSR):
         x = Dropout(self.config.dropout)(x)
         x = Dense(2, activation='softmax')(x)
         discriminator = Model(discriminator_input, x)
-        discriminator_optimizer = Adam(lr=1e-3)
+        discriminator_optimizer = Adam(lr=1e-4)
         discriminator.compile(
             loss='binary_crossentropy',
             optimizer=discriminator_optimizer
@@ -106,10 +106,10 @@ class MNISTGAN(DCGANSR):
 
 def batchnorm_tf(x):
     # work-around apparent theano/tf-dim_ordering bug
-    if K.image_dim_ordering == 'tf':
+    if K.image_dim_ordering() == 'tf':
         x = Permute((2, 3, 1))(x)
     x = BatchNormalization(mode=2, axis=1)(x)
-    if K.image_dim_ordering == 'tf':
+    if K.image_dim_ordering() == 'tf':
         x = Permute((3, 1, 2))(x)
     return x
 
