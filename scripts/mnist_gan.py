@@ -69,7 +69,6 @@ class MNISTGAN(DCGANSR):
             x = Convolution2D(
                 channels, kernel_size, kernel_size, subsample=(2, 2), border_mode='same'
             )(x)
-            x = batchnorm_tf(x)
             x = LeakyReLU(0.2)(x)
             x = Dropout(self.config.dropout)(x)
         x = Flatten()(x)
