@@ -106,12 +106,17 @@ class DCGAN(object):
         return d_losses, g_losses
 
     def train_discriminator(self, batch_size, num_batches=1, verbose=False):
-        def gen_batches():
-            while True:
-                yield self.make_discriminator_batch(batch_size)
-        return self.discriminator.fit_generator(
-            gen_batches(), samples_per_epoch=batch_size * num_batches,
-            nb_epoch=1, verbose=verbose
+        # def gen_batches():
+        #     while True:
+        #         yield self.make_discriminator_batch(batch_size)
+        # return self.discriminator.fit_generator(
+        #     gen_batches(), samples_per_epoch=batch_size * num_batches,
+        #     nb_epoch=1, verbose=verbose
+        # )
+        # Threading issue with fit_generator?
+        X, Y = self.make_discriminator_batch(batch_size * num_batches)
+        return self.discriminator.fit(
+            X, Y, batch_size=batch_size, nb_epoch=1, verbose=verbose
         )
 
     def train_generator(self, batch_size, num_batches=1, verbose=False):
