@@ -44,7 +44,9 @@ class DCGANSR(DCGAN):
     def _build_models(self):
         raise NotImplementedError('Implement `_build_models`')
 
-    def make_discriminator_batch(self, batch_size):
+    def make_discriminator_batch(self, batch_size, sample_memory=True):
+        if not sample_memory:
+            return super(DCGANSR, self).make_discriminator_batch(batch_size)
         num_samples = batch_size // 2
         num_recent = int(num_samples * 0.5)
         real_images = self.sample_frames(num_samples)

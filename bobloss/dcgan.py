@@ -60,8 +60,7 @@ class DCGAN(object):
         g_losses = []
         # discriminator_data = gan_training.gen_discriminator_training_data(batch_size)
         # generator_data = gan_training.gen_generator_training_data(batch_size)
-        throttle_discriminator = False
-        throttle_generator = False
+        throttle_discriminator = throttle_generator = False
         for epoch in tqdm(range(num_epochs)):
             if epoch % self.config.generate_every_n_iters == 0:
                 if train_generator:
@@ -91,11 +90,18 @@ class DCGAN(object):
                 g_losses.append(g_loss)
             if epoch % self.config.model_save_rate == 0:
                 self.save_models()
-            accuracy = self.check_accuracy()
-            throttle_discriminator = accuracy > self.config.throttle_accuracy_p
-            throttle_generator = accuracy < self.config.throttle_accuracy_p
+            fake_accuracy, real_accuracy = self.check_accuracy()
+            throttle_discriminator = (
+                fake_accuracy > (1. - self.config.throttle_accuracy_p) and
+                real_accuracy > (1. - self.config.throttle_accuracy_p)
+            )
+            throttle_generator = (
+                fake_accuracy < self.config.throttle_accuracy_p or
+                real_accuracy < self.config.throttle_accuracy_p
+            )
             if throttle_discriminator and throttle_generator:
                 throttle_generator = throttle_discriminator = False
+            print fake_accuracy, real_accuracy, throttle_discriminator, throttle_generator
         self.save_sample_grid(self.generate_images(batch_size))
         return d_losses, g_losses
 
@@ -124,14 +130,19 @@ class DCGAN(object):
         )
 
     def check_accuracy(self):
-        X, Y = self.make_discriminator_batch(32)
+        sample_size = 16
+        X, Y = self.make_discriminator_batch(sample_size * 2, sample_memory=False)
         Y_hat = self.discriminator.predict(X)
-        y = np.argmax(Y, axis=1)
-        y_hat = np.argmax(Y_hat, axis=1)
-        errors = y - y_hat
-        num_items = errors.shape[0]
-        num_right = (errors == 0).sum()
-        return num_right / float(num_items)
+        def accuracy(actual, prediction):
+            y = np.argmax(Y, axis=1)
+            y_hat = np.argmax(Y_hat, axis=1)
+            errors = y - y_hat
+            num_items = errors.shape[0]
+            num_right = (errors == 0).sum()
+            return num_right / float(num_items)
+        fake_accuracy = accuracy(Y[:sample_size], Y_hat[:sample_size])
+        real_accuracy = accuracy(Y[sample_size:], Y_hat[sample_size:])
+        return fake_accuracy, real_accuracy
 
     def sample_noise(self, num_samples):
         return np.random.uniform(
@@ -225,7 +236,7 @@ class DCGAN(object):
             help='Training batch size'
         )
         arg_parser.add_argument(
-            '--batches-per-iteration', default=10, type=int,
+            '--batches-per-iteration', default=4, type=int,
             help='Training batch size'
         )
         arg_parser.add_argument(
