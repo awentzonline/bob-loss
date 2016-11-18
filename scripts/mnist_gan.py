@@ -49,7 +49,10 @@ class MNISTGAN(DCGANSR):
             x = Convolution2D(channels, kernel_size, kernel_size, border_mode='same')(x)
             x = batchnorm_tf(x)
             x = Activation(activation)(x)
-        x = Convolution2D(img_channels, 1, 1, activation='tanh', border_mode='same')(x)
+        x = Convolution2D(
+            img_channels, 1, 1, activation=self.config.generator_activation,
+            border_mode='same'
+        )(x)
         generator = Model(generator_input, x)
         generator_optimizer = Adam(lr=1e-4)
         generator.compile(

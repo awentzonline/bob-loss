@@ -193,9 +193,12 @@ class DCGAN(object):
         for i in range(num_samples):
             x = (i % num_wide) * img_width
             y = (i / num_wide) * img_height
-            #sample_arr = samples[i]
-            sample_arr = (samples[i] + 1.) * 128.
-            #sample_arr = samples[i] * 256.
+            if self.config.generator_activation == 'relu':
+                sample_arr = samples[i]
+            elif self.config.generator_activation == 'tanh':
+                sample_arr = (samples[i] + 1.) * 128.
+            elif self.config.generator_activation == 'sigmoid':
+                sample_arr = samples[i] * 256.
             sample_img = array_to_img(sample_arr)
             output_img.paste(sample_img, (x, y))
         if filename is None:
@@ -302,4 +305,8 @@ class DCGAN(object):
         arg_parser.add_argument(
             '--throttle-accuracy_p', default=0.3, type=float,
             help='Skip training parts of the model at this level of accuracy'
+        )
+        arg_parser.add_argument(
+            '--generator-activation', default='tanh',
+            help='Activation function for generator output (tanh, sigmoid, relu)'
         )
