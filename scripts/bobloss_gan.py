@@ -19,7 +19,7 @@ class GANModel(DCGANSR):
         )
         for name in ('frame_data', 'frame_ids', 'episode_ids'):
             setattr(self, name, data[name])
-        if K.image_dim_ordering() == 'th':
+        if K.image_dim_ordering() == 'th' and self.frame_data.shape[-1] in (1, 3):
             self.frame_data = np.transpose(self.frame_data, (0, 3, 1, 2))
         self.frame_data = (self.frame_data / 128.) - 1.
 
@@ -56,7 +56,7 @@ class GANModel(DCGANSR):
             border_mode='same'
         )(x)
         generator = Model(generator_input, x)
-        generator_optimizer = Adam(lr=1e-4)
+        generator_optimizer = Adam(lr=2e-4, beta_1=0.5)
         generator.compile(
             loss='categorical_crossentropy',
             optimizer=generator_optimizer
@@ -77,12 +77,12 @@ class GANModel(DCGANSR):
             x = LeakyReLU(0.2)(x)
             x = Dropout(self.config.dropout)(x)
         x = Flatten()(x)
-        x = Dense(max_channels // 2)(x)
+        x = Dense(max_channels)(x)
         x = LeakyReLU(0.2)(x)
         x = Dropout(self.config.dropout)(x)
         x = Dense(2, activation='softmax')(x)
         discriminator = Model(discriminator_input, x)
-        discriminator_optimizer = Adam(lr=1e-4)
+        discriminator_optimizer = Adam(lr=2e-4, beta_1=0.5)
         discriminator.compile(
             loss='binary_crossentropy',
             optimizer=discriminator_optimizer
@@ -124,6 +124,7 @@ if __name__ == '__main__':
     arg_parser = argparse.ArgumentParser(description='Bob Loss GAN model')
     GANModel.add_to_arg_parser(arg_parser)
     args = arg_parser.parse_args()
+    args.generator_input_dim = 256
 
     model = GANModel(args)
     model.load_dataset()

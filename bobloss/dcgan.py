@@ -76,7 +76,7 @@ class DCGAN(object):
                         verbose=True
                     )
                     d_loss = history.history['loss'][-1]
-                tries += 1
+                    tries += 1
                 d_losses.append(d_loss)
             if train_generator and not throttle_generator:
                 g_loss = 9999.

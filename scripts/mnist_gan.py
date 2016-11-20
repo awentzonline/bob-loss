@@ -25,7 +25,7 @@ class MNISTGAN(DCGANSR):
         # generator
         activation = 'relu'
         kernel_size = 3
-        max_channels = 512
+        max_channels = 256
         cnn_layers = ((max_channels // 2, 3, 3), (max_channels // 4, 3, 3))
         num_cnn_layers = len(cnn_layers)
         scale = 2 ** num_cnn_layers
@@ -47,6 +47,11 @@ class MNISTGAN(DCGANSR):
         for channels, w, h in cnn_layers:
             x = UpSampling2D((2, 2))(x)
             x = Convolution2D(channels, kernel_size, kernel_size, border_mode='same')(x)
+            # scale /= 2
+            # output_shape = (None, channels, img_height // scale, img_width // scale)
+            # x = Deconvolution2D(
+            #     channels, kernel_size, kernel_size, output_shape, subsample=(2, 2), border_mode='same'
+            # )(x)
             x = batchnorm_tf(x)
             x = Activation(activation)(x)
         x = Convolution2D(
@@ -54,7 +59,7 @@ class MNISTGAN(DCGANSR):
             border_mode='same'
         )(x)
         generator = Model(generator_input, x)
-        generator_optimizer = Adam(lr=1e-4)
+        generator_optimizer = Adam(lr=1e-4, beta_1=0.5)
         generator.compile(
             loss='categorical_crossentropy',
             optimizer=generator_optimizer
@@ -63,10 +68,9 @@ class MNISTGAN(DCGANSR):
 
         # discriminator
         kernel_size = 5
-        max_channels = 512
-        cnn_layers = ((max_channels // 2, 3, 3), (max_channels, 3, 3))
+        max_channels = 256
+        cnn_layers = ((max_channels // 4, 3, 3), (max_channels // 2, 3, 3))
         num_cnn_layers = len(cnn_layers)
-        print self.frame_shape
         x = discriminator_input = Input(shape=self.frame_shape)
         for channels, w, h in cnn_layers:
             x = Convolution2D(
@@ -80,7 +84,7 @@ class MNISTGAN(DCGANSR):
         x = Dropout(self.config.dropout)(x)
         x = Dense(2, activation='softmax')(x)
         discriminator = Model(discriminator_input, x)
-        discriminator_optimizer = Adam(lr=1e-4)
+        discriminator_optimizer = Adam(lr=1e-4, beta_1=0.5)
         discriminator.compile(
             loss='binary_crossentropy',
             optimizer=discriminator_optimizer
