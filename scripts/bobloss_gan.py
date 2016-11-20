@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import numpy as np
 from bobloss.dcgansr import DCGANSR
+from bobloss.subpixel import SubPixelUpscaling
 from keras.datasets import mnist
 from keras.layers import (
     Activation, BatchNormalization, Convolution2D, Deconvolution2D, Dense,
@@ -47,7 +48,8 @@ class GANModel(DCGANSR):
             reshape_order = (max_channels, img_height // scale, img_width // scale)
         x = Reshape(reshape_order)(x)
         for channels, w, h in cnn_layers:
-            x = UpSampling2D((2, 2))(x)
+            #x = UpSampling2D((2, 2))(x)
+            x = SubPixelUpscaling(2, channels // 2)(x)
             x = Convolution2D(channels, kernel_size, kernel_size, border_mode='same')(x)
             x = batchnorm_tf(x)
             x = Activation(activation)(x)
