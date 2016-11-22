@@ -56,7 +56,7 @@ Implementation is incomplete. Use lambda layer for now.
 
 class SubPixelUpscaling(Layer):
 
-    def __init__(self, r, channels, **kwargs):
+    def __init__(self, r=2, channels=None, **kwargs):
         super(SubPixelUpscaling, self).__init__(**kwargs)
 
         self.r = r
@@ -79,3 +79,9 @@ class SubPixelUpscaling(Layer):
         else:
             b, r, c, k = input_shape
             return (b, r * self.r, c * self.r, self.channels)
+
+    def get_config(self):
+        config = {'r': self.r,
+                  'channels': self.channels}
+        base_config = super(SubPixelUpscaling, self).get_config()
+        return dict(list(base_config.items()) + list(config.items()))

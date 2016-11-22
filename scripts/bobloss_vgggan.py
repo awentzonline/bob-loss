@@ -26,14 +26,14 @@ class GANModel(DCGANSR):
         if self.frame_data.shape[-1] in (1, 3) and K.image_dim_ordering() == 'th':
             self.frame_data = np.transpose(self.frame_data, (0, 3, 1, 2))
         #self.frame_data = imagenet_utils.preprocess_input(self.frame_data)
-        self.frame_data = (self.frame_data / 128.) - 1.
+        #self.frame_data = (self.frame_data / 128.) - 1.
         #print self.frame_data.min(), self.frame_data.mean(), self.frame_data.max()
 
     def _build_models(self):
         # generator
         activation = 'relu'
-        kernel_size = 3
-        max_channels = 256
+        kernel_size = 5
+        max_channels = 512
         #cnn_layers = ((max_channels // 2, 3, 3), (max_channels // 4, 3, 3))#, (max_channels // 8, 3, 3))
         cnn_layers = ((max_channels // 2, 3, 3), (max_channels // 4, 3, 3), (max_channels // 8, 3, 3))
         #cnn_layers = ((max_channels // 2, 3, 3), (max_channels // 4, 3, 3),)
@@ -69,9 +69,9 @@ class GANModel(DCGANSR):
             img_channels, 1, 1, activation='tanh',#self.config.generator_activation,
             border_mode='same'
         )(x)
-        #x = Denormalize()(x)
+        x = Denormalize()(x)
         generator = Model(generator_input, x)
-        generator_optimizer = Adam(lr=2e-4, beta_1=0.5)
+        generator_optimizer = Adam(lr=1e-4, beta_1=0.5)
         generator.compile(
             loss='categorical_crossentropy',
             optimizer=generator_optimizer
@@ -81,18 +81,33 @@ class GANModel(DCGANSR):
         # discriminator
         kernel_size = 5
         max_channels = 256
+        conv_channels = 64
         x = discriminator_input = Input(shape=self.frame_shape)
-        #x = Normalize()(x)
+        x = Normalize()(x)
         vgg16 = VGG16(include_top=False, input_tensor=discriminator_input)
         make_trainable(vgg16, False)
-        x = vgg16.get_layer(name='block3_pool')(x)
+        for layer in vgg16.layers:
+            if not layer.name.startswith('block'):
+                continue
+            print layer.name
+            if layer.name == 'block4_conv1':
+                break
+            x = layer(x)
+        # vgg = Model(discriminator_input, vgg16.get_layer(name='block3_pool').output)
+        # x = vgg(x)
+        # x = Convolution2D(conv_channels, kernel_size, kernel_size, border_mode='same')(x)
+        # x = LeakyReLU(0.2)(x)
+        # x = Dropout(self.config.dropout)(x)
+        x = Convolution2D(conv_channels, kernel_size, kernel_size, border_mode='same')(x)
+        x = LeakyReLU(0.2)(x)
+        x = Dropout(self.config.dropout)(x)
         x = Flatten()(x)
         x = Dense(max_channels)(x)
         x = LeakyReLU(0.2)(x)
         x = Dropout(self.config.dropout)(x)
         x = Dense(2, activation='softmax')(x)
         discriminator = Model(discriminator_input, x)
-        discriminator_optimizer = Adam(lr=2e-4, beta_1=0.5)
+        discriminator_optimizer = Adam(lr=1e-4, beta_1=0.5)
         discriminator.compile(
             loss='binary_crossentropy',
             optimizer=discriminator_optimizer

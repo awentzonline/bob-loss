@@ -248,7 +248,7 @@ class DCGAN(object):
             help='Training batch size'
         )
         arg_parser.add_argument(
-            '--discriminator-update-rate', default=2, type=int,
+            '--discriminator-update-rate', default=1, type=int,
             help='How many more times is the disciminator updated vs generator'
         )
         arg_parser.add_argument(
@@ -256,11 +256,11 @@ class DCGAN(object):
             help='Number of training epochs'
         )
         arg_parser.add_argument(
-            '--num-pretrain-batches', default=1000, type=int,
+            '--num-pretrain-batches', default=0, type=int,
             help='Number of pretraining batches for the discriminator'
         )
         arg_parser.add_argument(
-            '--generate-every-n-iters', default=10, type=int,
+            '--generate-every-n-iters', default=2, type=int,
             help='Generate samples every N training iterations'
         )
         arg_parser.add_argument(
@@ -283,7 +283,7 @@ class DCGAN(object):
             help='Filename prefix for serialized model data'
         )
         arg_parser.add_argument(
-            '--p-sample-batch', default=0.1, type=float,
+            '--p-sample-batch', default=0.01, type=float,
             help='Probability of saving an image of the current training batch'
         )
         arg_parser.add_argument(

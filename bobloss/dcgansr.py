@@ -81,8 +81,8 @@ class DCGANSR(DCGAN):
     def add_to_arg_parser(cls, arg_parser):
         super(DCGANSR, cls).add_to_arg_parser(arg_parser)
         arg_parser.add_argument(
-            '--memory-size', default=30000, type=int,
-            help='Number of pretraining batches for the discriminator'
+            '--memory-size', default=10000, type=int,
+            help='Maximum size of the sample memory'
         )
         arg_parser.add_argument(
             '--memory-seed-size', default=10000, type=int,

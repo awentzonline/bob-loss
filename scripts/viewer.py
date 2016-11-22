@@ -6,14 +6,16 @@ from Tkinter import *
 from keras.models import load_model
 from keras.preprocessing.image import array_to_img
 
+from bobloss.subpixel import SubPixelUpscaling
+
+
 class App(object):
     def __init__(self, master):
         self.frame = frame = master#Frame(master)
         #frame.pack()
         self.generator = None
         self.view_position = None
-        self.last_positions = None
-        self.last_samples = None
+        self.random_walking = False
         self.open_generator_button = Button(
             frame, text='Open Generator', command=self.open_generator
         )
@@ -51,10 +53,12 @@ class App(object):
         filename = tkFileDialog.askopenfilename()#(**self.file_opt)
         if filename:
             print('Loading {}...'.format(filename))
-            self.generator = load_model(filename)
+            self.generator = load_model(filename, custom_objects={
+                'SubPixelUpscaling': SubPixelUpscaling
+            })
             print('Loaded.')
             self.set_view_position(np.ones(self.input_shape) * 0.5)
-            self.random_walk()
+            self.start_random_walk()
 
     def on_click_sample(self):
         self.set_random_view_position()
@@ -97,9 +101,15 @@ class App(object):
             label.configure(image=tkimage)
             label.img = tkimage
         self.frame.update()
-        self.last_positions = offset_positions
+
+    def start_random_walk(self):
+        if not self.random_walking:
+            self.random_walking = True
+            self.random_walk()
 
     def random_walk(self):
+        if not self.random_walking:
+            return
         dp = 0.001
         num_offsets = len(self.image_offsets)
         self.translate_view_position(
