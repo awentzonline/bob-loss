@@ -4,9 +4,9 @@ from bobloss.dcgansr import DCGANSR
 from bobloss.subpixel import SubPixelUpscaling
 from keras.datasets import mnist
 from keras.layers import (
-    Activation, BatchNormalization, Convolution2D, Deconvolution2D, Dense,
+    Activation, Convolution2D, Deconvolution2D, Dense,
     Dropout, Flatten, GlobalAveragePooling2D, Input, Lambda, Layer, LeakyReLU, Permute,
-    Reshape, UpSampling2D
+    Reshape, SpatialDropout2D, UpSampling2D
 )
 from keras import backend as K
 from keras.applications import imagenet_utils
@@ -26,7 +26,7 @@ class GANModel(DCGANSR):
         if self.frame_data.shape[-1] in (1, 3) and K.image_dim_ordering() == 'th':
             self.frame_data = np.transpose(self.frame_data, (0, 3, 1, 2))
         #self.frame_data = imagenet_utils.preprocess_input(self.frame_data)
-        #self.frame_data = (self.frame_data / 128.) - 1.
+        self.frame_data = (self.frame_data / 128.) - 1.
         #print self.frame_data.min(), self.frame_data.mean(), self.frame_data.max()
 
     def _build_models(self):
@@ -35,8 +35,8 @@ class GANModel(DCGANSR):
         kernel_size = 5
         max_channels = 512
         #cnn_layers = ((max_channels // 2, 3, 3), (max_channels // 4, 3, 3))#, (max_channels // 8, 3, 3))
-        cnn_layers = ((max_channels // 2, 3, 3), (max_channels // 4, 3, 3), (max_channels // 8, 3, 3))
-        #cnn_layers = ((max_channels // 2, 3, 3), (max_channels // 4, 3, 3),)
+        #cnn_layers = ((max_channels // 2, 3, 3), (max_channels // 4, 3, 3), (max_channels // 8, 3, 3))
+        cnn_layers = ((max_channels // 2, 3, 3), (max_channels // 4, 3, 3),)
         num_cnn_layers = len(cnn_layers)
         scale = 2 ** num_cnn_layers
         if K.image_dim_ordering() == 'tf':
@@ -47,7 +47,6 @@ class GANModel(DCGANSR):
         x = Dense(
             max_channels * (img_height // scale) * (img_width // scale)
         )(generator_input)
-        x = BatchNormalization(mode=2)(x)
         x = Activation(activation)(x)
         if K.image_dim_ordering() == 'tf':
             reshape_order = (img_height // scale, img_width // scale, max_channels)
@@ -57,19 +56,17 @@ class GANModel(DCGANSR):
         for channels, w, h in cnn_layers:
             #x = UpSampling2D((2, 2))(x)
             x = SubPixelUpscaling(2, channels // 2)(x)
-            x = Activation(activation)(x)
             x = Convolution2D(channels, kernel_size, kernel_size, border_mode='same')(x)
-            x = batchnorm_tf(x)
             x = Activation(activation)(x)
         # x = Convolution2D(
         #     img_channels, 1, 1, activation='relu',#self.config.generator_activation,
         #     border_mode='same'
         # )(x)
         x = Convolution2D(
-            img_channels, 1, 1, activation='tanh',#self.config.generator_activation,
+            img_channels, 1, 1, activation=self.config.generator_activation,
             border_mode='same'
         )(x)
-        x = Denormalize()(x)
+        #x = Denormalize()(x)
         generator = Model(generator_input, x)
         generator_optimizer = Adam(lr=1e-4, beta_1=0.5)
         generator.compile(
@@ -80,27 +77,31 @@ class GANModel(DCGANSR):
 
         # discriminator
         kernel_size = 5
-        max_channels = 256
+        max_channels = 512
         conv_channels = 64
         x = discriminator_input = Input(shape=self.frame_shape)
-        x = Normalize()(x)
+        #x = Normalize()(x)
         vgg16 = VGG16(include_top=False, input_tensor=discriminator_input)
         make_trainable(vgg16, False)
         for layer in vgg16.layers:
             if not layer.name.startswith('block'):
                 continue
             print layer.name
-            if layer.name == 'block4_conv1':
+            if layer.name == 'block3_conv1':
                 break
             x = layer(x)
         # vgg = Model(discriminator_input, vgg16.get_layer(name='block3_pool').output)
         # x = vgg(x)
-        # x = Convolution2D(conv_channels, kernel_size, kernel_size, border_mode='same')(x)
-        # x = LeakyReLU(0.2)(x)
-        # x = Dropout(self.config.dropout)(x)
-        x = Convolution2D(conv_channels, kernel_size, kernel_size, border_mode='same')(x)
+        x = Convolution2D(
+            conv_channels, kernel_size, kernel_size, border_mode='same'#, subsample=(2,2)
+        )(x)
         x = LeakyReLU(0.2)(x)
-        x = Dropout(self.config.dropout)(x)
+        x = SpatialDropout2D(self.config.dropout)(x)
+        x = Convolution2D(
+            conv_channels, kernel_size, kernel_size, border_mode='same'#, subsample=(2,2)
+        )(x)
+        x = LeakyReLU(0.2)(x)
+        x = SpatialDropout2D(self.config.dropout)(x)
         x = Flatten()(x)
         x = Dense(max_channels)(x)
         x = LeakyReLU(0.2)(x)
@@ -130,7 +131,6 @@ class GANModel(DCGANSR):
     def pretrain_generator(self):
         vgg16 = VGG16(include_top=False, input_tensor=discriminator_input)
 
-
     def save_sample_grid(self, samples, filename=None):
         from PIL import Image
 
@@ -157,16 +157,6 @@ class GANModel(DCGANSR):
         if filename is None:
             filename = self.config.sample_output_filename
         output_img.save(filename)
-
-
-def batchnorm_tf(x):
-    # work-around apparent theano/tf-dim_ordering bug
-    if K.image_dim_ordering() == 'tf':
-        x = Permute((2, 3, 1))(x)
-    x = BatchNormalization(mode=2, axis=1)(x)
-    if K.image_dim_ordering() == 'tf':
-        x = Permute((3, 1, 2))(x)
-    return x
 
 
 def make_trainable(net, val):
@@ -208,7 +198,6 @@ class Normalize(Layer):
                 # So we subtract an approximate value
                 x = x - self.value
             return x
-
 
     def get_output_shape_for(self, input_shape):
         return input_shape

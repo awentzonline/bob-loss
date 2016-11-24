@@ -4,9 +4,9 @@ from bobloss.dcgansr import DCGANSR
 from bobloss.subpixel import SubPixelUpscaling
 from keras.datasets import mnist
 from keras.layers import (
-    Activation, BatchNormalization, Convolution2D, Deconvolution2D, Dense,
+    Activation, Convolution2D, Deconvolution2D, Dense,
     Dropout, Flatten, GlobalAveragePooling2D, Input, LeakyReLU, Permute,
-    Reshape, UpSampling2D
+    Reshape, SpatialDropout2D, UpSampling2D
 )
 from keras import backend as K
 from keras.models import Model
@@ -25,7 +25,7 @@ class MNISTGAN(DCGANSR):
     def _build_models(self):
         # generator
         activation = 'relu'
-        kernel_size = 3
+        kernel_size = 5
         max_channels = 256
         cnn_layers = ((max_channels // 2, 3, 3), (max_channels // 4, 3, 3))
         num_cnn_layers = len(cnn_layers)
@@ -38,7 +38,6 @@ class MNISTGAN(DCGANSR):
         x = Dense(
             max_channels * (img_height // scale) * (img_width // scale)
         )(generator_input)
-        x = BatchNormalization(mode=2)(x)
         x = Activation(activation)(x)
         if K.image_dim_ordering() == 'tf':
             reshape_order = (img_height // scale, img_width // scale, max_channels)
@@ -46,22 +45,15 @@ class MNISTGAN(DCGANSR):
             reshape_order = (max_channels, img_height // scale, img_width // scale)
         x = Reshape(reshape_order)(x)
         for channels, w, h in cnn_layers:
-            #x = UpSampling2D((2, 2))(x)
-            x= SubPixelUpscaling(2, channels // 2)(x)
+            x = SubPixelUpscaling(2, channels // 2)(x)
             x = Convolution2D(channels, kernel_size, kernel_size, border_mode='same')(x)
-            # scale /= 2
-            # output_shape = (None, channels, img_height // scale, img_width // scale)
-            # x = Deconvolution2D(
-            #     channels, kernel_size, kernel_size, output_shape, subsample=(2, 2), border_mode='same'
-            # )(x)
-            x = batchnorm_tf(x)
             x = Activation(activation)(x)
         x = Convolution2D(
             img_channels, 1, 1, activation=self.config.generator_activation,
             border_mode='same'
         )(x)
         generator = Model(generator_input, x)
-        generator_optimizer = Adam(lr=1e-4, beta_1=0.5)
+        generator_optimizer = Adam(lr=2e-4, beta_1=0.5)
         generator.compile(
             loss='categorical_crossentropy',
             optimizer=generator_optimizer
@@ -79,14 +71,14 @@ class MNISTGAN(DCGANSR):
                 channels, kernel_size, kernel_size, subsample=(2, 2), border_mode='same'
             )(x)
             x = LeakyReLU(0.2)(x)
-            x = Dropout(self.config.dropout)(x)
+            x = SpatialDropout2D(self.config.dropout)(x)
         x = Flatten()(x)
         x = Dense(max_channels)(x)
         x = LeakyReLU(0.2)(x)
         x = Dropout(self.config.dropout)(x)
         x = Dense(2, activation='softmax')(x)
         discriminator = Model(discriminator_input, x)
-        discriminator_optimizer = Adam(lr=1e-4, beta_1=0.5)
+        discriminator_optimizer = Adam(lr=2e-4, beta_1=0.5)
         discriminator.compile(
             loss='binary_crossentropy',
             optimizer=discriminator_optimizer
@@ -110,16 +102,6 @@ class MNISTGAN(DCGANSR):
         make_trainable(discriminator, True)
         discriminator.summary()
         return generator, discriminator, gan
-
-
-def batchnorm_tf(x):
-    # work-around apparent theano/tf-dim_ordering bug
-    if K.image_dim_ordering() == 'tf':
-        x = Permute((2, 3, 1))(x)
-    x = BatchNormalization(mode=2, axis=1)(x)
-    if K.image_dim_ordering() == 'tf':
-        x = Permute((3, 1, 2))(x)
-    return x
 
 
 if __name__ == '__main__':

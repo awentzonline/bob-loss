@@ -4,7 +4,7 @@ from bobloss.dcgansr import DCGANSR
 from bobloss.subpixel import SubPixelUpscaling
 from keras.datasets import mnist
 from keras.layers import (
-    Activation, BatchNormalization, Convolution2D, Deconvolution2D, Dense,
+    Activation, Convolution2D, Deconvolution2D, Dense,
     Dropout, Flatten, GlobalAveragePooling2D, Input, LeakyReLU, Permute,
     Reshape, UpSampling2D
 )
@@ -40,7 +40,6 @@ class GANModel(DCGANSR):
         x = Dense(
             max_channels * (img_height // scale) * (img_width // scale)
         )(generator_input)
-        x = BatchNormalization(mode=2)(x)
         x = Activation(activation)(x)
         if K.image_dim_ordering() == 'tf':
             reshape_order = (img_height // scale, img_width // scale, max_channels)
@@ -51,7 +50,6 @@ class GANModel(DCGANSR):
             #x = UpSampling2D((2, 2))(x)
             x = SubPixelUpscaling(2, channels // 2)(x)
             x = Convolution2D(channels, kernel_size, kernel_size, border_mode='same')(x)
-            x = batchnorm_tf(x)
             x = Activation(activation)(x)
         x = Convolution2D(
             img_channels, 1, 1, activation=self.config.generator_activation,
@@ -108,16 +106,6 @@ class GANModel(DCGANSR):
         make_trainable(discriminator, True)
         discriminator.summary()
         return generator, discriminator, gan
-
-
-def batchnorm_tf(x):
-    # work-around apparent theano/tf-dim_ordering bug
-    if K.image_dim_ordering() == 'tf':
-        x = Permute((2, 3, 1))(x)
-    x = BatchNormalization(mode=2, axis=1)(x)
-    if K.image_dim_ordering() == 'tf':
-        x = Permute((3, 1, 2))(x)
-    return x
 
 
 if __name__ == '__main__':

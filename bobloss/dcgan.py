@@ -151,7 +151,7 @@ class DCGAN(object):
 
     def sample_noise(self, num_samples):
         return np.random.uniform(
-            0., 1., size=(num_samples, self.config.generator_input_dim)
+            -1., 1., size=(num_samples, self.config.generator_input_dim)
         )
 
     def generate_images(self, num_images):
