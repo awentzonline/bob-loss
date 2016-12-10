@@ -164,7 +164,7 @@ class DCGAN(object):
         )
         return self.frame_data[indexes]
 
-    def make_discriminator_batch(self, batch_size):
+    def make_discriminator_batch(self, batch_size, **kwargs):
         num_samples = batch_size // 2
         real_images = self.sample_frames(num_samples)
         generated_images = self.generate_images(num_samples)

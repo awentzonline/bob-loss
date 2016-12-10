@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import numpy as np
-from bobloss.dcgansr import DCGANSR
+from bobloss.dcgansr import DCGAN, DCGANSR
 from bobloss.subpixel import SubPixelUpscaling
 from keras.datasets import mnist
 from keras.layers import (
@@ -13,7 +13,7 @@ from keras.models import Model
 from keras.optimizers import Adam
 
 
-class GANModel(DCGANSR):
+class GANModel(DCGAN):
     def _load_dataset(self):
         data = np.load(
             self.config.dataset

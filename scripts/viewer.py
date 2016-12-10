@@ -27,6 +27,10 @@ class App(object):
             frame, text='Random View', command=self.set_random_view_position
         )
         self.update_button.grid(row=0, column=2)
+        self.random_offset_button = Button(
+            frame, text='Random samples', command=self.set_random_view_position
+        )
+        self.random_offset_button.grid(row=0, column=2)
         self.quit_button = Button(
             frame, text='Quit', fg='red', command=frame.quit
         )
@@ -58,7 +62,7 @@ class App(object):
             })
             print('Loaded.')
             self.set_view_position(np.ones(self.input_shape) * 0.5)
-            self.start_random_walk()
+            #self.start_random_walk()
 
     def on_click_sample(self):
         self.set_random_view_position()
@@ -68,16 +72,14 @@ class App(object):
             r = float(self.radius_entry.get())
         except ValueError:
             r = 0.01
-        r_low = min(r, 1. - r)
-        r_hi = max(r, 1. - r)
-        self.set_view_position(np.random.uniform(r_low, r_hi, self.input_shape))
+        self.set_view_position(np.random.uniform(-1, 1, self.input_shape))
 
     def set_view_position(self, p):
         self.view_position = p.copy()
         self.update_images()
 
     def translate_view_position(self, dp):
-        self.set_view_position(self.view_position + dp)
+        self.set_view_position((self.view_position + dp).clip(-1., 1.))
 
     def randomize_image_offsets(self, radius):
         self.image_offsets = np.random.uniform(
@@ -110,7 +112,7 @@ class App(object):
     def random_walk(self):
         if not self.random_walking:
             return
-        dp = 0.001
+        dp = 0.01
         num_offsets = len(self.image_offsets)
         self.translate_view_position(
             np.random.uniform(-dp, dp, self.input_shape)
@@ -131,6 +133,7 @@ class App(object):
     @property
     def input_shape(self):
         return self.generator.input_shape[1:]
+
 
 if __name__ == '__main__':
     root = Tk()
