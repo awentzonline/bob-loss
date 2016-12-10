@@ -38,6 +38,14 @@ class DCGAN(object):
         return self.frame_data[0].shape
 
     @property
+    def frame_size(self):
+        if K.image_dim_ordering() == 'tf':
+            img_height, img_width, img_channels = self.frame_shape
+        else:
+            img_channels, img_height, img_width = self.frame_shape
+        return img_height, img_width
+
+    @property
     def num_frames_in_dataset(self):
         return self.frame_data.shape[0]
 
