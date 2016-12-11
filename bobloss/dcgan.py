@@ -207,7 +207,7 @@ class DCGAN(object):
                 sample_arr = (samples[i] + 1.) * 128.
             elif self.config.generator_activation == 'sigmoid':
                 sample_arr = samples[i] * 256.
-            sample_img = array_to_img(sample_arr)
+            sample_img = array_to_img(sample_arr, scale=False)
             output_img.paste(sample_img, (x, y))
         if filename is None:
             filename = self.config.sample_output_filename

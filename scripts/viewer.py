@@ -99,7 +99,8 @@ class App(object):
         offset_positions = self.image_offsets + self.view_position
         samples = self.generator.predict(offset_positions, verbose=False)
         for label, sample in zip(self.images, samples):
-            tkimage = ImageTk.PhotoImage(image=array_to_img(sample))
+            sample = (sample + 1.) * 127.5
+            tkimage = ImageTk.PhotoImage(image=array_to_img(sample, scale=False))
             label.configure(image=tkimage)
             label.img = tkimage
         self.frame.update()
